@@ -1,45 +1,85 @@
 package org.example.new_new_mvp.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class EmailService {
     
-    @Autowired
-    private JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
     
-    public void sendInvitationEmail(String to, String invitationCode, String companyName) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Приглашение в Evalyze от " + companyName);
-        message.setText("Добро пожаловать в Evalyze!\n\n" +
-                       "Вы получили приглашение от компании " + companyName + ".\n\n" +
-                       "Код приглашения: " + invitationCode + "\n\n" +
-                       "Перейдите по ссылке для завершения регистрации:\n" +
-                       "http://localhost:8089/accept-invitation?code=" + invitationCode);
-        
-        mailSender.send(message);
+    @Value("${app.email.from:noreply@evalyze.com}")
+    private String fromEmail;
+    
+    @Value("${app.email.subject:Код подтверждения}")
+    private String subject;
+    
+    public EmailService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
     }
     
-    public void sendVerificationCode(String to, String verificationCode) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Код подтверждения для Evalyze");
-        message.setText("Ваш код подтверждения: " + verificationCode + 
-                       "\n\nИспользуйте этот код для завершения регистрации профиля.");
-        
-        mailSender.send(message);
+    public void sendVerificationCode(String toEmail, String verificationCode) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(buildEmailContent(verificationCode));
+            
+            mailSender.send(message);
+            log.info("Verification code sent to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send verification code to: {}", toEmail, e);
+            throw new RuntimeException("Не удалось отправить код подтверждения", e);
+        }
     }
     
-    public void sendProfileGenerated(String to, String profileData) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Ваш профиль готов!");
-        message.setText("Ваш IT-профиль был успешно сгенерирован.\n\n" + profileData);
-        
-        mailSender.send(message);
+    public void sendInvitationEmail(String email, String invitationCode, String companyName) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(email);
+            message.setSubject("Приглашение в Evalyze от " + companyName);
+            message.setText(buildInvitationEmailContent(invitationCode, companyName));
+            
+            mailSender.send(message);
+            log.info("Invitation email sent to: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to send invitation email to: {}", email, e);
+            throw new RuntimeException("Не удалось отправить приглашение", e);
+        }
+    }
+    
+    private String buildEmailContent(String verificationCode) {
+        return String.format("""
+            Здравствуйте!
+            
+            Ваш код подтверждения: %s
+            
+            Код действителен в течение 10 минут.
+            Если вы не запрашивали этот код, проигнорируйте это сообщение.
+            
+            С уважением,
+            Команда Evalyze
+            """, verificationCode);
+    }
+    
+    private String buildInvitationEmailContent(String invitationCode, String companyName) {
+        return String.format("""
+            Здравствуйте!
+            
+            Компания %s приглашает вас присоединиться к платформе Evalyze.
+            
+            Код приглашения: %s
+            
+            Перейдите по ссылке для активации: %s/activate?code=%s
+            
+            С уважением,
+            Команда Evalyze
+            """, companyName, invitationCode, "https://your-domain.com", invitationCode);
     }
 }

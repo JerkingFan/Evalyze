@@ -16,21 +16,27 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // Enabled for direct PostgreSQL access
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    // implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // Google OAuth2 (закомментировано - используется n8n webhook)
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-    implementation 'org.postgresql:postgresql:42.7.1'
-    implementation 'com.h2database:h2'
+    implementation 'org.postgresql:postgresql:42.7.1' // Enabled for direct PostgreSQL access
+    // implementation 'com.h2database:h2' // Disabled for Supabase API
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    
+    // HTTP Client for Supabase API
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
     
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'

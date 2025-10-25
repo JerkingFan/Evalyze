@@ -1,18 +1,15 @@
 package org.example.new_new_mvp.model;
 
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -23,39 +20,29 @@ import java.util.UUID;
 public class User implements UserDetails {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(
-        name = "UUID",
-        strategy = "org.hibernate.id.UUIDGenerator"
-    )
-    @Column(name = "id", columnDefinition = "UUID")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
     private Company company;
     
-    @Column(name = "email", unique = true, nullable = false, length = 255)
+    @Column(unique = true, nullable = false)
     private String email;
     
-    @Column(name = "full_name", nullable = false, length = 255)
     private String fullName;
     
     @Enumerated(EnumType.STRING)
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
-    @Column(name = "role", nullable = false, columnDefinition = "user_role")
     private UserRole role;
     
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
-    @Column(name = "google_oauth_token")
-    private String googleOauthToken;
     
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Profile profile;
+    // @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // private Profile profile;
     
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ProfileSnapshot> profileSnapshots;
+    // @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // private List<ProfileSnapshot> profileSnapshots;
     
+    // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -63,7 +50,7 @@ public class User implements UserDetails {
     
     @Override
     public String getPassword() {
-        return null; // We're using OAuth, no password needed
+        return null; // We don't store passwords, using OAuth
     }
     
     @Override

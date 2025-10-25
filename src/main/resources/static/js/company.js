@@ -444,10 +444,120 @@ class CompanyPanel {
 
 // Global functions
 function logout() {
+    // Очищаем все данные из localStorage
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
+    
+    // Перенаправляем на главную страницу
     window.location.href = '/';
+}
+
+async function exportAllData() {
+    try {
+        console.log('Starting JSON data export...');
+        
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Необходимо войти в систему для экспорта данных');
+            return;
+        }
+        
+        const response = await fetch('/api/export/all-data', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Get filename from response headers
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'evalyze_export.json';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        // Download the file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        console.log('JSON data export completed successfully');
+        alert('JSON данные успешно экспортированы!');
+        
+    } catch (error) {
+        console.error('Error exporting JSON data:', error);
+        alert('Ошибка при экспорте JSON данных: ' + error.message);
+    }
+}
+
+async function exportSQL() {
+    try {
+        console.log('Starting SQL export...');
+        
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Необходимо войти в систему для экспорта SQL');
+            return;
+        }
+        
+        const response = await fetch('/api/export/sql', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'text/plain'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Get filename from response headers
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'evalyze_sql_export.sql';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        // Download the file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        console.log('SQL export completed successfully');
+        alert('SQL запросы успешно экспортированы!');
+        
+    } catch (error) {
+        console.error('Error exporting SQL:', error);
+        alert('Ошибка при экспорте SQL: ' + error.message);
+    }
 }
 
 function createEmployeeProfile() {

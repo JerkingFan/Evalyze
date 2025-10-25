@@ -55,6 +55,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/oauth-bridge.html").permitAll() // OAuth bridge page
+                .requestMatchers("/privacy.html").permitAll() // Privacy policy
+                .requestMatchers("/terms.html").permitAll() // Terms of service
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/profiles/search").permitAll()

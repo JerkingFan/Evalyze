@@ -46,16 +46,17 @@ public class ProfileService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         Profile profile = profileRepository.findByUserId(userId).orElse(new Profile());
-        profile.setUser(user);
+        profile.setUserId(userId);
         profile.setProfileData(profileData);
         profile.setStatus(ProfileStatus.PENDING);
+        profile.setLastUpdated(java.time.LocalDateTime.now());
         
         Profile savedProfile = profileRepository.save(profile);
         
         // Create snapshot
         createSnapshot(userId, profileData);
         
-        return convertToDto(savedProfile);
+        return convertToDto(savedProfile, user);
     }
     
     public Optional<ProfileDto> getProfileByUserId(UUID userId) {
@@ -90,8 +91,9 @@ public class ProfileService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         ProfileSnapshot snapshot = new ProfileSnapshot();
-        snapshot.setUser(user);
+        snapshot.setUserId(userId);
         snapshot.setProfileData(profileData);
+        snapshot.setSnapshotDate(java.time.LocalDateTime.now());
         
         profileSnapshotRepository.save(snapshot);
     }
@@ -120,10 +122,14 @@ public class ProfileService {
             }
         }
         
+        // Get user information separately
+        final User user = userRepository.findById(profile.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
         return new Object() {
             public final UUID userId = profile.getUserId();
-            public final String employeeEmail = profile.getUser().getEmail();
-            public final String employeeName = profile.getUser().getFullName();
+            public final String employeeEmail = user.getEmail();
+            public final String employeeName = user.getFullName();
             public final String profileData = profile.getProfileData();
             public final ProfileStatus status = profile.getStatus();
             public final boolean isVerified = profile.getStatus() == ProfileStatus.COMPLETED;
@@ -157,15 +163,16 @@ public class ProfileService {
         System.out.println("Profile found for user: " + user.getEmail());
         
         // Return a simplified profile object for frontend
+        final User finalUser = user;
         return new Object() {
             public final UUID userId = profile.getUserId();
-            public final String employeeEmail = profile.getUser().getEmail();
-            public final String employeeName = profile.getUser().getFullName();
+            public final String employeeEmail = finalUser.getEmail();
+            public final String employeeName = finalUser.getFullName();
             public final String profileData = profile.getProfileData();
             public final ProfileStatus status = profile.getStatus();
             public final boolean isVerified = profile.getStatus() == ProfileStatus.COMPLETED;
-            public final UUID companyId = profile.getUser().getCompany() != null ? profile.getUser().getCompany().getId() : null;
-            public final String companyName = profile.getUser().getCompany() != null ? profile.getUser().getCompany().getName() : null;
+            public final UUID companyId = finalUser.getCompany() != null ? finalUser.getCompany().getId() : null;
+            public final String companyName = finalUser.getCompany() != null ? finalUser.getCompany().getName() : null;
         };
     }
     
@@ -242,9 +249,10 @@ public class ProfileService {
         
         // Create or update profile
         Profile profile = profileRepository.findByUserId(user.getId()).orElse(new Profile());
-        profile.setUser(user);
+        profile.setUserId(user.getId());
         profile.setProfileData(profileDataJson);
         profile.setStatus(ProfileStatus.COMPLETED); // Сразу активный профиль
+        profile.setLastUpdated(java.time.LocalDateTime.now());
         
         Profile savedProfile = profileRepository.save(profile);
         System.out.println("Profile saved with ID: " + savedProfile.getUserId());
@@ -253,25 +261,33 @@ public class ProfileService {
         createSnapshot(user.getId(), profileDataJson);
         
         // Return simplified result for frontend
+        final User finalUser = user;
         return new Object() {
             public final String message = "Profile created successfully";
             public final UUID userId = savedProfile.getUserId();
-            public final String employeeEmail = savedProfile.getUser().getEmail();
-            public final String employeeName = savedProfile.getUser().getFullName();
+            public final String employeeEmail = finalUser.getEmail();
+            public final String employeeName = finalUser.getFullName();
             public final ProfileStatus status = savedProfile.getStatus();
         };
     }
     
-    private ProfileDto convertToDto(Profile profile) {
+    private ProfileDto convertToDto(Profile profile, User user) {
         ProfileDto dto = new ProfileDto();
         dto.setUserId(profile.getUserId());
-        dto.setUserEmail(profile.getUser().getEmail());
-        dto.setUserFullName(profile.getUser().getFullName());
+        dto.setUserEmail(user.getEmail());
+        dto.setUserFullName(user.getFullName());
         dto.setProfileData(profile.getProfileData());
         dto.setStatus(profile.getStatus());
         dto.setLastUpdated(profile.getLastUpdated());
         
         return dto;
+    }
+    
+    private ProfileDto convertToDto(Profile profile) {
+        // Get user information separately since we removed the direct relationship
+        User user = userRepository.findById(profile.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found for profile"));
+        return convertToDto(profile, user);
     }
     
     public Object generateAIProfile(UUID profileId) {
@@ -281,16 +297,20 @@ public class ProfileService {
         Profile profile = profileRepository.findByUserId(profileId)
                 .orElseThrow(() -> new RuntimeException("Profile not found"));
         
-        System.out.println("Profile found for user: " + profile.getUser().getEmail());
+        // Get user information separately
+        User user = userRepository.findById(profile.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        System.out.println("Profile found for user: " + user.getEmail());
         
         try {
             // Send webhook to n8n
             String webhookResponse = webhookService.sendProfileWebhook(
                 profile.getUserId(),
-                profile.getUser().getEmail(),
-                profile.getUser().getFullName(),
+                user.getEmail(),
+                user.getFullName(),
                 profile.getProfileData(),
-                profile.getUser().getCompany() != null ? profile.getUser().getCompany().getName() : null
+                user.getCompany() != null ? user.getCompany().getName() : null
             );
             
             // Return success response
@@ -298,7 +318,7 @@ public class ProfileService {
             return new Object() {
                 public final String message = "AI profile generation initiated successfully";
                 public final UUID userId = profile.getUserId();
-                public final String userEmail = profile.getUser().getEmail();
+                public final String userEmail = user.getEmail();
                 public final String status = "webhook_sent";
                 public final String webhookResponse = finalWebhookResponse;
             };
@@ -308,10 +328,11 @@ public class ProfileService {
             e.printStackTrace();
             
             // Return error response
+            final User finalUser = user;
             return new Object() {
                 public final String message = "Error sending webhook to n8n";
                 public final UUID userId = profile.getUserId();
-                public final String userEmail = profile.getUser().getEmail();
+                public final String userEmail = finalUser.getEmail();
                 public final String status = "webhook_error";
                 public final String error = e.getMessage();
             };

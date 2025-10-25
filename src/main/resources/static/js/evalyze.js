@@ -167,16 +167,28 @@ function scrollToSearch() {
 
 // Modal functions
 function showLoginModal() {
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap не загружен! Попробуйте перезагрузить страницу.');
+        return;
+    }
     const modal = new bootstrap.Modal(document.getElementById('loginModal'));
     modal.show();
 }
 
 function showRegisterModal() {
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap не загружен! Попробуйте перезагрузить страницу.');
+        return;
+    }
     const modal = new bootstrap.Modal(document.getElementById('registerModal'));
     modal.show();
 }
 
 function openCreateProfileModal() {
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap не загружен! Попробуйте перезагрузить страницу.');
+        return;
+    }
     const modal = new bootstrap.Modal(document.getElementById('createProfileModal'));
     modal.show();
 }
@@ -184,8 +196,14 @@ function openCreateProfileModal() {
 // Auth functions
 
 function handleRoleChange() {
-    const role = document.getElementById('registerRole').value;
+    const roleSelect = document.getElementById('registerRole');
     const companyGroup = document.getElementById('companyNameGroup');
+    
+    if (!roleSelect || !companyGroup) {
+        return; // Elements don't exist in email auth version
+    }
+    
+    const role = roleSelect.value;
     
     if (role === 'COMPANY') {
         companyGroup.style.display = 'block';
@@ -203,24 +221,24 @@ async function handleRegister(e) {
     const fullName = document.getElementById('registerFullName').value;
     const companyName = document.getElementById('registerCompanyName').value;
     
-        try {
-            const registerData = {
-                role: role,
-                email: email,
-                password: password,
-                fullName: fullName,
-                companyName: role === 'COMPANY' ? companyName : null
-            };
-            console.log('Registering with data:', registerData);
-            
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(registerData)
-            });
+    try {
+        const registerData = {
+            role: role,
+            email: email,
+            password: password,
+            fullName: fullName,
+            companyName: role === 'COMPANY' ? companyName : null
+        };
+        console.log('Registering with data:', registerData);
         
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(registerData)
+        });
+    
         const result = await response.json();
         
         if (response.ok) {
@@ -256,21 +274,21 @@ async function handleLogin(e) {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
-        try {
-            const loginData = {
-                email: email,
-                password: password
-            };
-            console.log('Logging in with data:', loginData);
-            
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(loginData)
-            });
+    try {
+        const loginData = {
+            email: email,
+            password: password
+        };
+        console.log('Logging in with data:', loginData);
         
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(loginData)
+        });
+    
         const result = await response.json();
         
         if (response.ok) {
@@ -298,7 +316,452 @@ async function handleLogin(e) {
         console.error('Error:', error);
         alert('Ошибка входа');
     }
-}
+    }
+    
+    // Google OAuth function
+    function googleLogin() {
+        console.log('🔥 Google login clicked!');
+        
+        try {
+            const clientId = '340752343067-79ipapn7o97qd8ibqvgpjg4687fm7jo7.apps.googleusercontent.com';
+            const redirectUri = encodeURIComponent('https://24beface.ru/oauth-bridge.html');
+            const scope = encodeURIComponent('openid profile email https://www.googleapis.com/auth/drive.readonly');
+            
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}&` +
+                `redirect_uri=${redirectUri}&` +
+                `response_type=code&` +
+                `scope=${scope}&` +
+                `access_type=offline&` +
+                `prompt=consent&` +
+                `state=${Date.now()}`;
+            
+            console.log('Redirecting to Google OAuth:', googleAuthUrl);
+            window.location.href = googleAuthUrl;
+        } catch (error) {
+            console.error('Google login error:', error);
+            alert('Ошибка при входе через Google: ' + error.message);
+        }
+    }
+    
+    // Quick file upload functions
+    async function quickUploadAndAnalyze() {
+        const fileInput = document.getElementById('quickFileInput');
+        const files = fileInput.files;
+        const description = document.getElementById('quickFileDescription').value;
+        const tags = document.getElementById('quickFileTags').value;
+
+        if (files.length === 0) {
+            showQuickMessage('Выберите файлы для загрузки', 'warning');
+            return;
+        }
+
+        // Проверяем авторизацию
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showQuickMessage('Необходимо войти в систему для загрузки файлов', 'error');
+            setTimeout(() => {
+                showLoginModal();
+            }, 2000);
+            return;
+        }
+
+        try {
+            // Показываем прогресс
+            showQuickProgress();
+            updateQuickProgress(0, 'Подготовка к загрузке...');
+
+            // Валидация файлов
+            const validationResult = validateQuickFiles(files);
+            if (!validationResult.valid) {
+                showQuickMessage(validationResult.message, 'error');
+                hideQuickProgress();
+                return;
+            }
+
+            // Загружаем файлы
+            updateQuickProgress(20, 'Загрузка файлов...');
+            const uploadedFiles = await uploadQuickFiles(files, description, tags, token);
+            
+            if (uploadedFiles.length === 0) {
+                showQuickMessage('Ошибка загрузки файлов', 'error');
+                hideQuickProgress();
+                return;
+            }
+
+            // Сохраняем файлы в localStorage для персистентности
+            const existingFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+            const allFiles = [...existingFiles, ...uploadedFiles];
+            localStorage.setItem('uploadedFiles', JSON.stringify(allFiles));
+
+            // Анализируем файлы
+            updateQuickProgress(50, 'Анализ файлов...');
+            const analysisResult = await analyzeQuickFiles(uploadedFiles, token);
+            
+            // Показываем результаты
+            updateQuickProgress(100, 'Анализ завершен!');
+            showQuickResults(analysisResult);
+            
+        } catch (error) {
+            console.error('Quick upload error:', error);
+            showQuickMessage('Ошибка загрузки и анализа файлов', 'error');
+            hideQuickProgress();
+        }
+    }
+
+    function validateQuickFiles(files) {
+        const maxFileSize = 50 * 1024 * 1024; // 50MB
+        const allowedTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf', 'text/plain', 'text/csv',
+            'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            if (file.size > maxFileSize) {
+                return {
+                    valid: false,
+                    message: `Файл "${file.name}" слишком большой. Максимальный размер: 50MB`
+                };
+            }
+            
+            if (!allowedTypes.includes(file.type)) {
+                return {
+                    valid: false,
+                    message: `Файл "${file.name}" имеет неподдерживаемый тип`
+                };
+            }
+        }
+        
+        return { valid: true };
+    }
+
+    async function uploadQuickFiles(files, description, tags, token) {
+        const uploadedFiles = [];
+        const totalFiles = files.length;
+        
+        // Загружаем файлы по одному для лучшего контроля
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const progress = Math.round(((i + 1) / totalFiles) * 100);
+            updateQuickProgress(progress, `Загрузка файла ${i + 1} из ${totalFiles}: ${file.name}`);
+            
+            const formData = new FormData();
+            formData.append('files', file);
+            if (description) {
+                formData.append('description', description);
+            }
+            if (tags) {
+                formData.append('tags', tags);
+            }
+
+            const response = await fetch('/api/files/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                uploadedFiles.push(...result);
+            } else {
+                const error = await response.json();
+                console.error(`Error uploading file ${file.name}:`, error);
+            }
+        }
+
+        if (uploadedFiles.length === 0) {
+            throw new Error('Не удалось загрузить ни одного файла');
+        }
+
+        return uploadedFiles;
+    }
+
+    async function analyzeQuickFiles(uploadedFiles, token) {
+        const fileIds = uploadedFiles.map(file => file.id);
+        
+        const response = await fetch('/api/files/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ fileIds: fileIds })
+        });
+
+        if (response.ok) {
+            return await response.json();
+        } else {
+            const error = await response.json();
+            throw new Error(error.message || 'Ошибка анализа файлов');
+        }
+    }
+
+    function showQuickProgress() {
+        const progressDiv = document.getElementById('quickUploadProgress');
+        if (progressDiv) {
+            progressDiv.style.display = 'block';
+        }
+    }
+
+    function updateQuickProgress(percentage, status) {
+        const progressBar = document.querySelector('#quickUploadProgress .progress-bar');
+        const statusText = document.getElementById('quickUploadStatus');
+        
+        if (progressBar) {
+            progressBar.style.width = percentage + '%';
+        }
+        if (statusText) {
+            statusText.textContent = status;
+        }
+    }
+
+    function hideQuickProgress() {
+        const progressDiv = document.getElementById('quickUploadProgress');
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+    }
+
+    function showQuickResults(result) {
+        const resultsDiv = document.getElementById('quickUploadResults');
+        const contentDiv = document.getElementById('quickAnalysisContent');
+        const messageDiv = document.getElementById('quickUploadMessage');
+        
+        if (resultsDiv) {
+            resultsDiv.style.display = 'block';
+        }
+        
+        if (contentDiv) {
+            contentDiv.textContent = result.analysis || 'Анализ завершен успешно!';
+        }
+        
+        if (messageDiv) {
+            messageDiv.textContent = 'Файлы успешно загружены и проанализированы!';
+        }
+
+        hideQuickProgress();
+        showQuickMessage('Файлы успешно загружены и проанализированы!', 'success');
+        
+        // Обновляем список файлов
+        if (typeof refreshFiles === 'function') {
+            refreshFiles();
+        }
+    }
+
+    function showQuickMessage(message, type) {
+        // Создаем временное уведомление
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} alert-dismissible fade show`;
+        alertDiv.style.position = 'fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.style.minWidth = '300px';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Автоматически скрываем через 5 секунд
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+
+    // Employee upload functions for modal
+    async function employeeUploadAndAnalyze() {
+        const fileInput = document.getElementById('employeeFileInput');
+        const files = fileInput.files;
+        const description = document.getElementById('employeeFileDescription').value;
+        const tags = document.getElementById('employeeFileTags').value;
+
+        if (files.length === 0) {
+            showEmployeeMessage('Выберите файлы для загрузки', 'warning');
+            return;
+        }
+
+        // Проверяем авторизацию
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showEmployeeMessage('Необходимо войти в систему для загрузки файлов', 'error');
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('employeeUploadModal'));
+                modal.hide();
+                showLoginModal();
+            }, 2000);
+            return;
+        }
+
+        try {
+            // Показываем прогресс
+            showEmployeeProgress();
+            updateEmployeeProgress(0, 'Подготовка к загрузке...');
+
+            // Валидация файлов
+            const validationResult = validateQuickFiles(files);
+            if (!validationResult.valid) {
+                showEmployeeMessage(validationResult.message, 'error');
+                hideEmployeeProgress();
+                return;
+            }
+
+            // Загружаем файлы
+            updateEmployeeProgress(20, 'Загрузка файлов...');
+            const uploadedFiles = await uploadEmployeeFiles(files, description, tags, token);
+            
+            if (uploadedFiles.length === 0) {
+                showEmployeeMessage('Ошибка загрузки файлов', 'error');
+                hideEmployeeProgress();
+                return;
+            }
+
+            // Сохраняем файлы в localStorage для персистентности
+            const existingFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+            const allFiles = [...existingFiles, ...uploadedFiles];
+            localStorage.setItem('uploadedFiles', JSON.stringify(allFiles));
+
+            // Анализируем файлы
+            updateEmployeeProgress(50, 'Анализ файлов...');
+            const analysisResult = await analyzeQuickFiles(uploadedFiles, token);
+            
+            // Показываем результаты
+            updateEmployeeProgress(100, 'Анализ завершен!');
+            showEmployeeResults(analysisResult);
+            
+        } catch (error) {
+            console.error('Employee upload error:', error);
+            showEmployeeMessage('Ошибка загрузки и анализа файлов', 'error');
+            hideEmployeeProgress();
+        }
+    }
+
+    async function uploadEmployeeFiles(files, description, tags, token) {
+        const uploadedFiles = [];
+        const totalFiles = files.length;
+        
+        // Загружаем файлы по одному для лучшего контроля
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const progress = Math.round(((i + 1) / totalFiles) * 100);
+            updateEmployeeProgress(progress, `Загрузка файла ${i + 1} из ${totalFiles}: ${file.name}`);
+            
+            const formData = new FormData();
+            formData.append('files', file);
+            if (description) {
+                formData.append('description', description);
+            }
+            if (tags) {
+                formData.append('tags', tags);
+            }
+
+            const response = await fetch('/api/files/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                uploadedFiles.push(...result);
+            } else {
+                const error = await response.json();
+                console.error(`Error uploading file ${file.name}:`, error);
+            }
+        }
+
+        if (uploadedFiles.length === 0) {
+            throw new Error('Не удалось загрузить ни одного файла');
+        }
+
+        return uploadedFiles;
+    }
+
+    function showEmployeeProgress() {
+        const progressDiv = document.getElementById('employeeUploadProgress');
+        if (progressDiv) {
+            progressDiv.style.display = 'block';
+        }
+    }
+
+    function updateEmployeeProgress(percentage, status) {
+        const progressBar = document.querySelector('#employeeUploadProgress .progress-bar');
+        const statusText = document.getElementById('employeeUploadStatus');
+        
+        if (progressBar) {
+            progressBar.style.width = percentage + '%';
+        }
+        if (statusText) {
+            statusText.textContent = status;
+        }
+    }
+
+    function hideEmployeeProgress() {
+        const progressDiv = document.getElementById('employeeUploadProgress');
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+    }
+
+    function showEmployeeResults(result) {
+        const resultsDiv = document.getElementById('employeeUploadResults');
+        const contentDiv = document.getElementById('employeeAnalysisContent');
+        const messageDiv = document.getElementById('employeeUploadMessage');
+        
+        if (resultsDiv) {
+            resultsDiv.style.display = 'block';
+        }
+        
+        if (contentDiv) {
+            contentDiv.textContent = result.analysis || 'Анализ завершен успешно!';
+        }
+        
+        if (messageDiv) {
+            messageDiv.textContent = 'Файлы успешно загружены и проанализированы!';
+        }
+
+        hideEmployeeProgress();
+        showEmployeeMessage('Файлы успешно загружены и проанализированы!', 'success');
+    }
+
+    function showEmployeeMessage(message, type) {
+        // Создаем временное уведомление
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : type === 'warning' ? 'warning' : 'info'} alert-dismissible fade show`;
+        alertDiv.style.position = 'fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.style.minWidth = '300px';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Автоматически скрываем через 5 секунд
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    function goToEmployeeProfile() {
+        window.location.href = '/profile';
+    }
 
     function checkUserRole() {
         const token = localStorage.getItem('token');
@@ -369,12 +832,13 @@ function getRoleDisplayName(role) {
 }
 
 function logout() {
-    // Clear localStorage
+    // Очищаем все данные из localStorage
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     
-    // Redirect to home page
+    // Перенаправляем на главную страницу
     window.location.href = '/';
 }
 

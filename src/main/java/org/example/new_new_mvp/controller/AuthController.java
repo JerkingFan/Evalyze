@@ -22,33 +22,42 @@ public class AuthController {
     
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        AuthResponse response = authService.register(request);
-        
-        if (response.getToken() != null) {
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.badRequest().body(response);
+        try {
+            AuthResponse response = authService.register(request);
+            if (response.getToken() != null) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, null, null, e.getMessage()));
         }
     }
     
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
-        
-        if (response.getToken() != null) {
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.badRequest().body(response);
+        try {
+            AuthResponse response = authService.login(request);
+            if (response.getToken() != null) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, null, null, e.getMessage()));
         }
     }
     
     @GetMapping("/me")
     public ResponseEntity<User> getCurrentUser(Authentication authentication) {
-        User user = authService.getCurrentUser(authentication.getName());
-        
-        if (user != null) {
-            return ResponseEntity.ok(user);
-        } else {
+        try {
+            User user = authService.getCurrentUser(authentication.getName());
+            if (user != null) {
+                return ResponseEntity.ok(user);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }

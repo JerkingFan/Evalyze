@@ -9,9 +9,69 @@ class ITProfileApp {
     }
 
     init() {
+        // Проверяем, есть ли токен в URL (после Google OAuth)
+        this.handleOAuthCallback();
+        
         this.setupEventListeners();
         this.checkAuthStatus();
         this.setupRoleToggle();
+    }
+
+    handleOAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const email = urlParams.get('email');
+        const role = urlParams.get('role');
+        const fullName = urlParams.get('fullName');
+        const auth = urlParams.get('auth');
+        const error = urlParams.get('error');
+        
+        // Обработка результата от GitHub Pages bridge
+        if (auth === 'success') {
+            console.log('GitHub Pages OAuth success detected');
+            this.showAlert('Авторизация через Google выполнена успешно!', 'success');
+            // Здесь можно добавить логику для получения данных пользователя
+            return;
+        }
+        
+        if (error) {
+            console.error('OAuth error from GitHub Pages:', error);
+            this.showAlert(`Ошибка авторизации: ${error}`, 'danger');
+            return;
+        }
+        
+        // Старая логика для прямого OAuth (если нужно)
+        if (token && email) {
+            console.log('Direct Google OAuth callback detected');
+            
+            // Сохраняем данные
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify({ email, role, fullName }));
+            
+            this.token = token;
+            this.currentUser = { email, role, fullName };
+            
+            // Очищаем URL от параметров
+            window.history.replaceState({}, document.title, '/');
+            
+            // Показываем успешное сообщение
+            this.showAlert('Вход через Google выполнен успешно!', 'success');
+            
+            // Перенаправляем в зависимости от роли
+            if (role === 'COMPANY') {
+                setTimeout(() => window.location.href = '/company', 1500);
+            } else {
+                setTimeout(() => window.location.href = '/profile', 1500);
+            }
+        }
+        
+        // Проверяем ошибки
+        const error = urlParams.get('error');
+        if (error) {
+            console.log('OAuth error:', error);
+            this.showAlert('Ошибка авторизации: ' + error, 'danger');
+            window.history.replaceState({}, document.title, '/');
+        }
     }
 
     setupEventListeners() {
@@ -179,7 +239,7 @@ class ITProfileApp {
                         <i class="fas fa-user me-1"></i>${this.currentUser.fullName}
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#" onclick="app.logout()">
+                        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); app.logout(); return false;">
                             <i class="fas fa-sign-out-alt me-2"></i>Выйти
                         </a></li>
                     </ul>
@@ -188,21 +248,112 @@ class ITProfileApp {
         }
     }
 
+    async loginWithGoogle() {
+        try {
+            console.log('Initiating Google OAuth...');
+            
+            // ВРЕМЕННОЕ РЕШЕНИЕ: используем прямой Google OAuth
+            // Потом заменим на GitHub Pages bridge
+            
+            const clientId = '340752343067-79ipapn7o97qd8ibqvgpjg4687fm7jo7.apps.googleusercontent.com';
+            const redirectUri = encodeURIComponent(window.location.origin + '/oauth-bridge.html');
+            const scope = encodeURIComponent('openid profile email https://www.googleapis.com/auth/drive.readonly');
+            
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${clientId}&` +
+                `redirect_uri=${redirectUri}&` +
+                `response_type=code&` +
+                `scope=${scope}&` +
+                `access_type=offline&` +
+                `prompt=consent&` +
+                `state=${Date.now()}`;
+            
+            console.log('Redirecting to Google OAuth:', googleAuthUrl);
+            
+            // Перенаправляем пользователя на Google OAuth
+            window.location.href = googleAuthUrl;
+        } catch (error) {
+            console.error('Google login error:', error);
+            this.showAlert('Ошибка при входе через Google', 'danger');
+        }
+    }
+
+    /**
+     * Альтернативный метод: отправка Google токена напрямую на backend
+     * Используется если фронтенд получает токен от Google напрямую
+     */
+    async authenticateWithGoogleToken(googleToken) {
+        try {
+            console.log('Authenticating with Google token via backend...');
+            
+            const response = await fetch(`${this.apiBaseUrl}/auth/google/authenticate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ token: googleToken })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.token = data.token;
+                this.currentUser = data;
+                localStorage.setItem('token', this.token);
+                localStorage.setItem('user', JSON.stringify(data));
+                
+                this.showAlert('Успешный вход через Google!', 'success');
+                this.updateNavigation();
+                
+                // Redirect based on role
+                if (data.role === 'COMPANY') {
+                    window.location.href = '/company';
+                } else {
+                    window.location.href = '/profile';
+                }
+            } else {
+                this.showAlert(data.message || 'Ошибка авторизации через Google', 'danger');
+            }
+        } catch (error) {
+            console.error('Google authentication error:', error);
+            this.showAlert('Ошибка при авторизации через Google', 'danger');
+        }
+    }
+
     logout() {
+        // Очищаем все данные из localStorage
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userEmail');
+        
+        // Очищаем состояние приложения
         this.token = null;
         this.currentUser = null;
+        
+        // Обновляем навигацию
         this.updateNavigation();
+        
+        // Перенаправляем на главную страницу
         window.location.href = '/';
     }
 
     showModal(modalId) {
+        // Проверяем что Bootstrap загружен
+        if (typeof bootstrap === 'undefined') {
+            console.error('Bootstrap не загружен! Модал не может быть открыт.');
+            return;
+        }
         const modal = new bootstrap.Modal(document.getElementById(modalId));
         modal.show();
     }
 
     hideModal(modalId) {
+        // Проверяем что Bootstrap загружен
+        if (typeof bootstrap === 'undefined') {
+            console.error('Bootstrap не загружен! Модал не может быть закрыт.');
+            return;
+        }
         const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
         if (modal) {
             modal.hide();

@@ -1,11 +1,12 @@
 package org.example.new_new_mvp.controller;
 
 import org.example.new_new_mvp.dto.CompanyDto;
-import org.example.new_new_mvp.service.CompanyService;
+import org.example.new_new_mvp.service.SupabaseCompanyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,51 +17,44 @@ import java.util.UUID;
 public class CompanyController {
     
     @Autowired
-    private CompanyService companyService;
+    private SupabaseCompanyService companyService;
     
     @GetMapping
-    public ResponseEntity<List<CompanyDto>> getAllCompanies() {
-        List<CompanyDto> companies = companyService.getAllCompanies();
-        return ResponseEntity.ok(companies);
+    public Mono<ResponseEntity<List<CompanyDto>>> getAllCompanies() {
+        return companyService.getAllCompanies()
+                .map(ResponseEntity::ok);
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<CompanyDto> getCompanyById(@PathVariable UUID id) {
+    public Mono<ResponseEntity<CompanyDto>> getCompanyById(@PathVariable UUID id) {
         return companyService.getCompanyById(id)
-                .map(company -> ResponseEntity.ok(company))
-                .orElse(ResponseEntity.notFound().build());
+                .map(company -> company != null ? ResponseEntity.ok(company) : ResponseEntity.notFound().build());
     }
     
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<CompanyDto> createCompany(@RequestBody String name) {
-        try {
-            CompanyDto company = companyService.createCompany(name);
-            return ResponseEntity.ok(company);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public Mono<ResponseEntity<CompanyDto>> createCompany(@RequestBody String name) {
+        CompanyDto companyDto = new CompanyDto();
+        companyDto.setName(name);
+        return companyService.createCompany(companyDto)
+                .map(ResponseEntity::ok)
+                .onErrorReturn(ResponseEntity.badRequest().build());
     }
     
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<CompanyDto> updateCompany(@PathVariable UUID id, @RequestBody String name) {
-        try {
-            CompanyDto company = companyService.updateCompany(id, name);
-            return ResponseEntity.ok(company);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public Mono<ResponseEntity<CompanyDto>> updateCompany(@PathVariable UUID id, @RequestBody String name) {
+        CompanyDto companyDto = new CompanyDto();
+        companyDto.setName(name);
+        return companyService.updateCompany(id, companyDto)
+                .map(company -> company != null ? ResponseEntity.ok(company) : ResponseEntity.notFound().build());
     }
     
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteCompany(@PathVariable UUID id) {
-        try {
-            companyService.deleteCompany(id);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public Mono<ResponseEntity<Void>> deleteCompany(@PathVariable UUID id) {
+        return companyService.deleteCompany(id)
+                .then(Mono.just(ResponseEntity.ok().<Void>build()))
+                .onErrorReturn(ResponseEntity.notFound().build());
     }
 }

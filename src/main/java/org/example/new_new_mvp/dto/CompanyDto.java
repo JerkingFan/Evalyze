@@ -11,9 +11,23 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CompanyDto {
-    private UUID id;
+    private String id;
     private String name;
     private LocalDateTime createdAt;
     private long userCount;
     private long invitationCount;
+    
+    /**
+     * Set ID from UUID
+     */
+    public void setId(UUID uuid) {
+        this.id = uuid != null ? uuid.toString() : null;
+    }
+    
+    /**
+     * Get ID as UUID
+     */
+    public UUID getIdAsUuid() {
+        return id != null ? UUID.fromString(id) : null;
+    }
 }

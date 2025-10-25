@@ -1,25 +1,54 @@
 package org.example.new_new_mvp.repository;
 
 import org.example.new_new_mvp.model.ProfileSnapshot;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface ProfileSnapshotRepository extends JpaRepository<ProfileSnapshot, UUID> {
-    
-    List<ProfileSnapshot> findByUserIdOrderBySnapshotDateDesc(UUID userId);
-    
-    List<ProfileSnapshot> findByUserCompanyId(UUID companyId);
-    
-    @Query("SELECT ps FROM ProfileSnapshot ps WHERE ps.user.id = :userId ORDER BY ps.snapshotDate DESC")
-    List<ProfileSnapshot> findLatestSnapshotsByUserId(@Param("userId") UUID userId);
-    
-    @Query("SELECT ps FROM ProfileSnapshot ps WHERE ps.snapshotDate BETWEEN :startDate AND :endDate")
-    List<ProfileSnapshot> findSnapshotsBetweenDates(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+public class ProfileSnapshotRepository {
+
+    @Autowired
+    private SupabaseProfileSnapshotRepository supabaseRepository;
+
+    public List<ProfileSnapshot> findAll() {
+        return supabaseRepository.findAll().block();
+    }
+
+    public Optional<ProfileSnapshot> findById(UUID id) {
+        return supabaseRepository.findById(id).block();
+    }
+
+    public List<ProfileSnapshot> findLatestSnapshotsByUserId(UUID userId) {
+        return supabaseRepository.findLatestSnapshotsByUserId(userId).block();
+    }
+
+    public List<ProfileSnapshot> findByUserIdOrderBySnapshotDateDesc(UUID userId) {
+        return supabaseRepository.findByUserIdOrderBySnapshotDateDesc(userId).block();
+    }
+
+    public List<ProfileSnapshot> findSnapshotsBetweenDates(LocalDateTime startDate, LocalDateTime endDate) {
+        return supabaseRepository.findSnapshotsBetweenDates(startDate, endDate).block();
+    }
+
+    public ProfileSnapshot save(ProfileSnapshot snapshot) {
+        return supabaseRepository.save(snapshot).block();
+    }
+
+    public ProfileSnapshot update(ProfileSnapshot snapshot) {
+        return supabaseRepository.update(snapshot).block();
+    }
+
+    public void deleteById(UUID id) {
+        supabaseRepository.deleteById(id).block();
+    }
+
+    public long count() {
+        return supabaseRepository.count().block();
+    }
 }
+
