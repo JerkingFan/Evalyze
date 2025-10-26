@@ -254,7 +254,7 @@
             <div class="modal-content" style="background: var(--secondary-gray); border: 1px solid rgba(255,255,255,0.1);">
                 <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <h5 class="modal-title"><i class="fas fa-upload me-2"></i>Загрузка файлов для анализа</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" onclick="hideUploadModal()"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row">
@@ -385,7 +385,7 @@
             <div class="modal-content" style="background: var(--secondary-gray); border: 1px solid rgba(255,255,255,0.1);">
                 <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <h5 class="modal-title">Вход в Evalyze</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" onclick="hideLoginModal()"></button>
                 </div>
                 <div class="modal-body">
                     <!-- Tabs -->
@@ -458,7 +458,7 @@
             <div class="modal-content" style="background: var(--secondary-gray); border: 1px solid rgba(255,255,255,0.1);">
                 <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <h5 class="modal-title">Регистрация в Evalyze</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" onclick="hideRegisterModal()"></button>
                 </div>
                 <div class="modal-body">
                     <form id="registerForm">

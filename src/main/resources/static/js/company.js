@@ -42,12 +42,23 @@ class CompanyPanel {
                     <div class="text-white fw-bold">${userEmail}</div>
                     <div class="text-white-50 small">Компания</div>
                 </div>
-                <button class="btn btn-outline-evalyze" onclick="logout()">
+                <button class="btn btn-outline-evalyze" id="logoutBtnCompany">
                     <i class="fas fa-sign-out-alt me-2"></i>Выйти
                 </button>
             `;
             
             authContainer.appendChild(userInfo);
+            
+            // Добавляем обработчик события для кнопки выхода
+            setTimeout(() => {
+                const logoutBtn = document.getElementById('logoutBtnCompany');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        logout();
+                    });
+                }
+            }, 100);
         }
 
     async loadProfiles() {

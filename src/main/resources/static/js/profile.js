@@ -543,6 +543,151 @@ window.enableBuildButton = function() {
     }
 };
 
+// Функция для анализа компетенций (кнопка 1)
+async function analyzeCompetencies() {
+    console.log('analyzeCompetencies called');
+    
+    const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
+    
+    try {
+        const response = await fetch('/api/profiles/analyze-competencies', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userEmail: userEmail,
+                activationCode: 'mock-activation-code'
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Competencies analysis successful:', result);
+            alert('✅ Анализ компетенций запущен! Результаты будут доступны в профиле.');
+        } else {
+            console.error('Competencies analysis failed:', response.status);
+            alert('❌ Ошибка анализа компетенций: ' + response.status);
+        }
+    } catch (error) {
+        console.error('Error analyzing competencies:', error);
+        alert('❌ Ошибка соединения с сервером: ' + error.message);
+    }
+}
+
+// Функция для назначения роли (кнопка 2)
+async function assignJobRole() {
+    console.log('assignJobRole called');
+    
+    const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
+    const jobRoleId = 'mock-job-role-id'; // В реальном приложении это будет выбираться из списка
+    
+    try {
+        const response = await fetch('/api/profiles/assign-job-role', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userEmail: userEmail,
+                activationCode: 'mock-activation-code',
+                jobRoleId: jobRoleId
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Job role assignment successful:', result);
+            alert('✅ Роль назначена успешно!');
+        } else {
+            console.error('Job role assignment failed:', response.status);
+            alert('❌ Ошибка назначения роли: ' + response.status);
+        }
+    } catch (error) {
+        console.error('Error assigning job role:', error);
+        alert('❌ Ошибка соединения с сервером: ' + error.message);
+    }
+}
+
+// Функции для модальных окон
+function showUploadAndAnalyzeModal() {
+    const modal = new bootstrap.Modal(document.getElementById('uploadModal'));
+    modal.show();
+}
+
+function showJobRolesModal() {
+    // Показываем модальное окно с выбором ролей или сразу назначаем роль
+    if (confirm('Назначить роль "Frontend Developer"? (В демо-режиме)')) {
+        assignJobRole();
+    }
+}
+
+// Функции для загрузки файлов
+async function uploadFiles() {
+    const fileInput = document.getElementById('fileInput');
+    const files = fileInput.files;
+    
+    if (files.length === 0) {
+        alert('Выберите файлы для загрузки');
+        return;
+    }
+    
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append('files', file);
+    }
+    
+    try {
+        const response = await fetch('/api/files/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Files uploaded successfully:', result);
+            alert('✅ Файлы загружены успешно!');
+            refreshFiles();
+        } else {
+            console.error('File upload failed:', response.status);
+            alert('❌ Ошибка загрузки файлов: ' + response.status);
+        }
+    } catch (error) {
+        console.error('Error uploading files:', error);
+        alert('❌ Ошибка соединения с сервером: ' + error.message);
+    }
+}
+
+function refreshFiles() {
+    // Обновляем список файлов
+    console.log('Refreshing files list...');
+    // В реальном приложении здесь будет запрос к API
+}
+
+function sendFilesForAnalysis() {
+    analyzeCompetencies();
+}
+
+function quickUploadAndAnalyze() {
+    uploadFiles().then(() => {
+        setTimeout(() => {
+            analyzeCompetencies();
+        }, 1000);
+    });
+}
+
+function employeeUploadAndAnalyze() {
+    quickUploadAndAnalyze();
+}
+
+function printProfile() {
+    window.print();
+}
+
+function resendVerificationCode() {
+    alert('Код подтверждения отправлен повторно!');
+}
+
 function downloadProfile() {
     if (window.profilePanel) {
         window.profilePanel.downloadProfile();

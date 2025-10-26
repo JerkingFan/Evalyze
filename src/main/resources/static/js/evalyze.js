@@ -173,21 +173,86 @@ function scrollToSearch() {
 
 // Modal functions
 function showLoginModal() {
-    if (typeof bootstrap === 'undefined') {
-        console.error('Bootstrap не загружен! Попробуйте перезагрузить страницу.');
-        return;
+    console.log('showLoginModal called');
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        // Простое отображение модального окна без Bootstrap
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        
+        // Добавляем backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.id = 'loginModalBackdrop';
+        backdrop.onclick = hideLoginModal;
+        document.body.appendChild(backdrop);
+        
+        console.log('Login modal shown');
+    } else {
+        console.error('Login modal not found');
     }
-    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
-    modal.show();
 }
 
 function showRegisterModal() {
-    if (typeof bootstrap === 'undefined') {
-        console.error('Bootstrap не загружен! Попробуйте перезагрузить страницу.');
-        return;
+    console.log('showRegisterModal called');
+    const modal = document.getElementById('registerModal');
+    if (modal) {
+        // Простое отображение модального окна без Bootstrap
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        
+        // Добавляем backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.id = 'registerModalBackdrop';
+        backdrop.onclick = hideRegisterModal;
+        document.body.appendChild(backdrop);
+        
+        console.log('Register modal shown');
+    } else {
+        console.error('Register modal not found');
     }
-    const modal = new bootstrap.Modal(document.getElementById('registerModal'));
-    modal.show();
+}
+
+// Функции для закрытия модальных окон
+function hideLoginModal() {
+    const modal = document.getElementById('loginModal');
+    const backdrop = document.getElementById('loginModalBackdrop');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+    if (backdrop) {
+        backdrop.remove();
+    }
+}
+
+function hideRegisterModal() {
+    const modal = document.getElementById('registerModal');
+    const backdrop = document.getElementById('registerModalBackdrop');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+    if (backdrop) {
+        backdrop.remove();
+    }
+}
+
+function hideUploadModal() {
+    const modal = document.getElementById('employeeUploadModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+    // Удаляем все backdrop'ы
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => backdrop.remove());
 }
 
 function openCreateProfileModal() {
@@ -249,29 +314,20 @@ async function handleRegister(e) {
         
         if (response.ok) {
             console.log('Registration successful:', result);
-            // Store token
+            // Store token and user data
             localStorage.setItem('token', result.token);
-            localStorage.setItem('userRole', result.role);
-            localStorage.setItem('userEmail', result.email);
-            
-            // Store full user data
-            const userData = {
-                email: result.email,
-                fullName: result.fullName,
-                role: result.role,
-                companyName: result.companyName
-            };
-            localStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('user', JSON.stringify(result.user));
+            localStorage.setItem('userRole', result.user.role || 'EMPLOYEE');
+            localStorage.setItem('userEmail', result.user.email);
             
             // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
-            modal.hide();
+            hideRegisterModal();
             
             // Redirect based on role
-            if (result.role === 'EMPLOYEE') {
-                window.location.href = '/profile';
-            } else if (result.role === 'COMPANY') {
+            if (result.user.role === 'COMPANY') {
                 window.location.href = '/company';
+            } else {
+                window.location.href = '/profile';
             }
         } else {
             console.log('Registration failed:', result);
@@ -292,7 +348,7 @@ async function handleActivationCodeLogin(e) {
     try {
         console.log('Logging in with activation code:', activationCode);
         
-        const response = await fetch('/api/auth/login-by-code', {
+        const response = await fetch('/api/auth/login/activation-code', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -304,18 +360,21 @@ async function handleActivationCodeLogin(e) {
         
         if (response.ok) {
             console.log('Login by activation code successful:', result);
-            // Store token
+            // Store token and user data
             localStorage.setItem('token', result.token);
-            localStorage.setItem('userRole', result.role || 'EMPLOYEE');
-            localStorage.setItem('userEmail', result.email);
-            localStorage.setItem('userFullName', result.fullName);
-            localStorage.setItem('companyName', result.companyName);
+            localStorage.setItem('user', JSON.stringify(result.user));
+            localStorage.setItem('userRole', result.user.role || 'EMPLOYEE');
+            localStorage.setItem('userEmail', result.user.email);
             
             // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
-            modal.hide();
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('show');
+                document.body.classList.remove('modal-open');
+            }
             
-            // Redirect to profile
+            // Redirect to profile (сотрудники всегда идут в профиль)
             window.location.href = '/profile';
         } else {
             console.error('Login by activation code failed:', result);
@@ -352,24 +411,24 @@ async function handleLogin(e) {
         
         if (response.ok) {
             console.log('Login successful:', result);
-            // Store token
+            // Store token and user data
             localStorage.setItem('token', result.token);
-            localStorage.setItem('userRole', result.role);
-            localStorage.setItem('userEmail', result.email);
+            localStorage.setItem('user', JSON.stringify(result.user));
+            localStorage.setItem('userRole', result.user.role || 'EMPLOYEE');
+            localStorage.setItem('userEmail', result.user.email);
             
             // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
-            modal.hide();
+            hideLoginModal();
             
             // Redirect based on role
-            if (result.role === 'EMPLOYEE') {
-                window.location.href = '/profile';
-            } else if (result.role === 'COMPANY') {
+            if (result.user.role === 'COMPANY') {
                 window.location.href = '/company';
+            } else {
+                window.location.href = '/profile';
             }
         } else {
             console.log('Login failed:', result);
-            alert('Ошибка входа: ' + result.message);
+            alert('Ошибка входа: ' + (result.error || result.message || 'Неизвестная ошибка'));
         }
     } catch (error) {
         console.error('Error:', error);
@@ -884,12 +943,24 @@ function updateAuthButtons(userRole, userEmail) {
             <div class="text-white fw-bold">${userEmail}</div>
             <div class="text-white-50 small">${getRoleDisplayName(userRole)}</div>
         </div>
-        <button class="btn btn-outline-evalyze" onclick="logout()">
+        <button class="btn btn-outline-evalyze" id="logoutBtn">
             <i class="fas fa-sign-out-alt me-2"></i>Выйти
         </button>
     `;
     
     authContainer.appendChild(userInfo);
+    
+    // Добавляем обработчик события для кнопки выхода
+    setTimeout(() => {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
+            console.log('✅ Logout button handler attached');
+        }
+    }, 100);
 }
 
 function getRoleDisplayName(role) {
