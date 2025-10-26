@@ -22,6 +22,14 @@ public class UserRepository {
     public boolean existsByEmail(String email) {
         return supabaseRepository.existsByEmail(email).block();
     }
+    
+    public Optional<User> findByActivationCode(String activationCode) {
+        return supabaseRepository.findByActivationCode(activationCode).block();
+    }
+    
+    public boolean existsByActivationCode(String activationCode) {
+        return supabaseRepository.existsByActivationCode(activationCode).block();
+    }
 
     public List<User> findByRole(UserRole role) {
         return supabaseRepository.findByRole(role).block();
@@ -70,6 +78,14 @@ public class UserRepository {
 
     public long count() {
         return supabaseRepository.count().block();
+    }
+
+    public boolean updateUserRoleByEmail(String email, java.util.UUID roleId) {
+        return supabaseRepository.updateUserRoleByEmail(email, roleId).blockOptional().orElse(false);
+    }
+
+    public boolean updateUserRoleByActivationCode(String activationCode, java.util.UUID roleId) {
+        return supabaseRepository.updateUserRoleByActivationCode(activationCode, roleId).blockOptional().orElse(false);
     }
 }
 

@@ -1,11 +1,14 @@
 package org.example.new_new_mvp.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -13,6 +16,7 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Company {
     
     @Id
@@ -23,7 +27,8 @@ public class Company {
     private String name;
     
     @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @JsonProperty("created_at")
+    private OffsetDateTime createdAt;
     
     // @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     // private List<User> users;
@@ -36,7 +41,7 @@ public class Company {
     
     public void prePersist() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = OffsetDateTime.now();
         }
     }
 }

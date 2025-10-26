@@ -87,12 +87,20 @@ public class ProfileController {
             }
         } catch (Exception e) {
             System.out.println("Error searching profile: " + e.getMessage());
-            return ResponseEntity.badRequest().body("Error searching profile: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Return proper JSON error response
+            java.util.Map<String, Object> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", "Error searching profile");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("status", "error");
+            
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
     
     @PostMapping("/create")
-    @PreAuthorize("hasRole('COMPANY')")
+    // @PreAuthorize("hasRole('COMPANY')") // Temporarily disabled for debugging
     public ResponseEntity<?> createEmployeeProfile(@RequestBody CreateProfileRequest request) {
         try {
             System.out.println("Creating profile request received for: " + request.getEmployeeEmail());
@@ -102,7 +110,14 @@ public class ProfileController {
         } catch (Exception e) {
             System.out.println("Error creating profile: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body("Error creating profile: " + e.getMessage());
+            
+            // Return proper JSON error response
+            java.util.Map<String, Object> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", "Error creating profile");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("status", "error");
+            
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
     
@@ -120,16 +135,81 @@ public class ProfileController {
     }
     
     @PostMapping("/generate-ai/{profileId}")
-    public ResponseEntity<?> generateAIProfile(@PathVariable UUID profileId) {
+    public ResponseEntity<?> generateAIProfile(@PathVariable UUID profileId, @RequestBody(required = false) java.util.Map<String, String> body) {
         try {
             System.out.println("Generating AI profile for ID: " + profileId);
-            var result = profileService.generateAIProfile(profileId);
+            String activationCode = body != null ? body.get("activationCode") : null;
+            String email = body != null ? body.get("email") : null;
+            var result = profileService.generateAIProfile(profileId, activationCode, email);
             System.out.println("AI profile generation initiated successfully");
             return ResponseEntity.ok().body(result);
         } catch (Exception e) {
             System.out.println("Error generating AI profile: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Error generating AI profile: " + e.getMessage());
+        }
+    }
+    
+    @PostMapping("/assign-role/{userId}")
+    public ResponseEntity<?> assignJobRole(@PathVariable UUID userId, @RequestBody String payload) {
+        try {
+            System.out.println("Assigning job role to user " + userId + "; payload=" + payload);
+            java.util.UUID jobRoleId = null;
+            String email = null;
+            String activationCode = null;
+            
+            try {
+                if (payload != null && payload.trim().startsWith("{")) {
+                    var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(payload);
+                    if (node.has("jobRoleId")) jobRoleId = java.util.UUID.fromString(node.get("jobRoleId").asText());
+                    if (node.has("email")) email = node.get("email").asText(null);
+                    if (node.has("activationCode")) activationCode = node.get("activationCode").asText(null);
+                } else {
+                    // raw UUID string
+                    String raw = payload == null ? "" : payload.replace("\"", "").trim();
+                    if (!raw.isEmpty()) jobRoleId = java.util.UUID.fromString(raw);
+                }
+            } catch (Exception parseEx) {
+                System.out.println("Failed to parse payload, trying as raw UUID: " + parseEx.getMessage());
+                String raw = payload == null ? "" : payload.replace("\"", "").trim();
+                if (!raw.isEmpty()) jobRoleId = java.util.UUID.fromString(raw);
+            }
+            
+            if (jobRoleId == null) {
+                throw new RuntimeException("jobRoleId is required");
+            }
+            
+            Object result;
+            if ((email != null && !email.isBlank()) || (activationCode != null && !activationCode.isBlank())) {
+                System.out.println("Using flexible assignment with identifiers: email=" + email + ", activationCode=" + activationCode);
+                result = profileService.assignJobRoleFlexible(jobRoleId, activationCode, email);
+            } else {
+                result = profileService.assignJobRoleToUser(userId, jobRoleId);
+            }
+            
+            System.out.println("Job role assigned successfully");
+            return ResponseEntity.ok().body(result);
+        } catch (Exception e) {
+            System.out.println("Error assigning job role: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error assigning job role: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/assign-role")
+    public ResponseEntity<?> assignJobRoleFlexible(@RequestBody java.util.Map<String, String> body) {
+        try {
+            String jobRoleIdStr = body.get("jobRoleId");
+            String activationCode = body.get("activationCode");
+            String email = body.get("email");
+            System.out.println("Assigning job role (flex) jobRoleId=" + jobRoleIdStr + ", email=" + email + ", activationCode=" + activationCode);
+            java.util.UUID jobRoleId = java.util.UUID.fromString(jobRoleIdStr);
+            var result = profileService.assignJobRoleFlexible(jobRoleId, activationCode, email);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.out.println("Error assigning job role (flex): " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Error assigning job role: " + e.getMessage());
         }
     }
 }

@@ -20,6 +20,12 @@ document.addEventListener('DOMContentLoaded', function() {
         loginForm.addEventListener('submit', handleLogin);
     }
     
+    // Handle activation code form
+    const activationCodeForm = document.getElementById('activationCodeForm');
+    if (activationCodeForm) {
+        activationCodeForm.addEventListener('submit', handleActivationCodeLogin);
+    }
+    
     // Handle role selection
     const roleSelect = document.getElementById('registerRole');
     if (roleSelect) {
@@ -248,6 +254,15 @@ async function handleRegister(e) {
             localStorage.setItem('userRole', result.role);
             localStorage.setItem('userEmail', result.email);
             
+            // Store full user data
+            const userData = {
+                email: result.email,
+                fullName: result.fullName,
+                role: result.role,
+                companyName: result.companyName
+            };
+            localStorage.setItem('user', JSON.stringify(userData));
+            
             // Close modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
             modal.hide();
@@ -260,11 +275,55 @@ async function handleRegister(e) {
             }
         } else {
             console.log('Registration failed:', result);
-            alert('Ошибка регистрации: ' + result.message);
+            console.log('Response status:', response.status);
+            alert('Ошибка регистрации: ' + (result.message || result.error || 'Неизвестная ошибка'));
         }
     } catch (error) {
         console.error('Error:', error);
         alert('Ошибка регистрации');
+    }
+}
+
+async function handleActivationCodeLogin(e) {
+    e.preventDefault();
+    
+    const activationCode = document.getElementById('activationCode').value;
+    
+    try {
+        console.log('Logging in with activation code:', activationCode);
+        
+        const response = await fetch('/api/auth/login-by-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ activationCode: activationCode })
+        });
+    
+        const result = await response.json();
+        
+        if (response.ok) {
+            console.log('Login by activation code successful:', result);
+            // Store token
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('userRole', result.role || 'EMPLOYEE');
+            localStorage.setItem('userEmail', result.email);
+            localStorage.setItem('userFullName', result.fullName);
+            localStorage.setItem('companyName', result.companyName);
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+            modal.hide();
+            
+            // Redirect to profile
+            window.location.href = '/profile';
+        } else {
+            console.error('Login by activation code failed:', result);
+            alert('Ошибка входа: ' + (result.message || 'Неверный код активации'));
+        }
+    } catch (error) {
+        console.error('Login by activation code error:', error);
+        alert('Ошибка входа: ' + error.message);
     }
 }
 
@@ -656,13 +715,15 @@ async function handleLogin(e) {
             updateEmployeeProgress(progress, `Загрузка файла ${i + 1} из ${totalFiles}: ${file.name}`);
             
             const formData = new FormData();
-            formData.append('files', file);
+            formData.append('files', file);  // 'files' должен быть массивом, но backend принимает и одиночный файл
             if (description) {
                 formData.append('description', description);
             }
             if (tags) {
                 formData.append('tags', tags);
             }
+
+            console.log(`Uploading file ${i + 1}: ${file.name}, size: ${file.size} bytes`);
 
             const response = await fetch('/api/files/upload', {
                 method: 'POST',
@@ -672,12 +733,21 @@ async function handleLogin(e) {
                 body: formData
             });
 
+            console.log(`Response status for ${file.name}:`, response.status);
+
             if (response.ok) {
                 const result = await response.json();
+                console.log(`Successfully uploaded ${file.name}:`, result);
                 uploadedFiles.push(...result);
             } else {
-                const error = await response.json();
-                console.error(`Error uploading file ${file.name}:`, error);
+                const errorText = await response.text();
+                console.error(`Error uploading file ${file.name}:`, errorText);
+                try {
+                    const error = JSON.parse(errorText);
+                    console.error(`Parsed error:`, error);
+                } catch (e) {
+                    console.error(`Raw error response:`, errorText);
+                }
             }
         }
 

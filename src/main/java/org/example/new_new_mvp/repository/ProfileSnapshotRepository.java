@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,7 +32,7 @@ public class ProfileSnapshotRepository {
         return supabaseRepository.findByUserIdOrderBySnapshotDateDesc(userId).block();
     }
 
-    public List<ProfileSnapshot> findSnapshotsBetweenDates(LocalDateTime startDate, LocalDateTime endDate) {
+    public List<ProfileSnapshot> findSnapshotsBetweenDates(OffsetDateTime startDate, OffsetDateTime endDate) {
         return supabaseRepository.findSnapshotsBetweenDates(startDate, endDate).block();
     }
 

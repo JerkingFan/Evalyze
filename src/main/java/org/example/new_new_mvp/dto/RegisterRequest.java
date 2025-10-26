@@ -20,6 +20,8 @@ public class RegisterRequest {
     @NotBlank(message = "Full name is required")
     private String fullName;
     
+    private String password; // For backward compatibility, not used in OAuth flow
+    
     private String companyName;
     
     private String companyId;

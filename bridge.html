@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth - Redirecting...</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status { margin-top: 20px; font-size: 18px; }
+        .error { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google OAuth</h1>
+        <div class="spinner"></div>
+        <div class="status" id="status">Подключение к Google...</div>
+    </div>
+
+    <script>
+        // НАСТРОЙКИ - ЗАМЕНИ НА СВОИ!
+        const CONFIG = {
+            CLIENT_ID: '340752343067-79ipapn7o97qd8ibqvgpjg4687fm7jo7.apps.googleusercontent.com',
+            REDIRECT_URI: window.location.origin + window.location.pathname, // URL этой страницы
+            N8N_WEBHOOK_URL: 'https://guglovskij.app.n8n.cloud/webhook/google-oauth-callback', // n8n webhook для callback
+            BACKEND_URL: 'http://5.83.140.54:8089', // твой backend
+            SCOPES: [
+                'openid',
+                'profile',
+                'email',
+                'https://www.googleapis.com/auth/drive.readonly'
+            ]
+        };
+
+        const statusEl = document.getElementById('status');
+
+        // Функция для обновления статуса
+        function updateStatus(message, isError = false) {
+            statusEl.textContent = message;
+            if (isError) {
+                statusEl.classList.add('error');
+            }
+            console.log(message);
+        }
+
+        // Получаем параметры из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+
+        // Если есть ошибка от Google
+        if (error) {
+            updateStatus('❌ Ошибка авторизации: ' + error, true);
+            setTimeout(() => {
+                window.location.href = CONFIG.BACKEND_URL + '/?error=' + encodeURIComponent(error);
+            }, 3000);
+        }
+        // Если есть code - это callback от Google
+        else if (code) {
+            updateStatus('✅ Код получен, обмениваем на токен...');
+            
+            // Отправляем код в n8n webhook
+            fetch(CONFIG.N8N_WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: code,
+                    state: state,
+                    redirect_uri: CONFIG.REDIRECT_URI
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                updateStatus('✅ Успешно! Перенаправление...');
+                
+                // Перенаправляем на backend с данными пользователя
+                const redirectUrl = `${CONFIG.BACKEND_URL}/api/auth/google/callback?` +
+                    `token=${encodeURIComponent(data.access_token || '')}&` +
+                    `email=${encodeURIComponent(data.email || '')}&` +
+                    `name=${encodeURIComponent(data.name || '')}`;
+                
+                window.location.href = redirectUrl;
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                updateStatus('❌ Ошибка при обмене кода: ' + err.message, true);
+                setTimeout(() => {
+                    window.location.href = CONFIG.BACKEND_URL + '/?error=oauth_exchange_failed';
+                }, 3000);
+            });
+        }
+        // Если нет code - это начало OAuth flow
+        else {
+            updateStatus('🔄 Перенаправление на Google...');
+            
+            // Генерируем state для безопасности
+            const state = Math.random().toString(36).substring(7);
+            
+            // Формируем URL для Google OAuth
+            const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+            googleAuthUrl.searchParams.append('client_id', CONFIG.CLIENT_ID);
+            googleAuthUrl.searchParams.append('redirect_uri', CONFIG.REDIRECT_URI);
+            googleAuthUrl.searchParams.append('response_type', 'code');
+            googleAuthUrl.searchParams.append('scope', CONFIG.SCOPES.join(' '));
+            googleAuthUrl.searchParams.append('access_type', 'offline');
+            googleAuthUrl.searchParams.append('prompt', 'consent');
+            googleAuthUrl.searchParams.append('state', state);
+            
+            // Сохраняем state в sessionStorage для проверки
+            sessionStorage.setItem('oauth_state', state);
+            
+            // Редирект на Google
+            setTimeout(() => {
+                window.location.href = googleAuthUrl.toString();
+            }, 500);
+        }
+    </script>
+</body>
+</html>
+

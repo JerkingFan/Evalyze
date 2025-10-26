@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            text-align: center;
+            padding: 60px 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 30px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            color: #666;
+            font-size: 16px;
+            margin-top: 20px;
+            min-height: 24px;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google OAuth</h1>
+        <div class="spinner"></div>
+        <div class="status" id="status">Connecting...</div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            CLIENT_ID: '340752343067-79ipapn7o97qd8ibqvgpjg4687fm7jo7.apps.googleusercontent.com',
+            REDIRECT_URI: window.location.origin + '/oauth-bridge.html',
+            BACKEND_URL: window.location.origin,
+            SCOPES: [
+                'openid',
+                'profile',
+                'email',
+                'https://www.googleapis.com/auth/drive.readonly'
+            ].join(' ')
+        };
+
+        const statusEl = document.getElementById('status');
+
+        function updateStatus(message, type = 'info') {
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
+            console.log('[OAuth]', message);
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+
+        if (error) {
+            updateStatus('❌ Authorization error: ' + error, 'error');
+            setTimeout(() => {
+                window.location.href = CONFIG.BACKEND_URL + '/?error=' + encodeURIComponent(error);
+            }, 3000);
+        } else if (code) {
+            updateStatus('✅ Code received, exchanging...');
+            
+            // Отправляем код на backend
+            fetch(CONFIG.BACKEND_URL + '/api/auth/google/exchange', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    updateStatus('✅ Success! Redirecting...', 'success');
+                    
+                    // Сохраняем токен
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data));
+                    
+                    // Перенаправляем в зависимости от роли
+                    setTimeout(() => {
+                        const targetPage = data.role === 'COMPANY' ? '/company' : '/profile';
+                        window.location.href = CONFIG.BACKEND_URL + targetPage;
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || 'Authentication failed');
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                updateStatus('❌ Error: ' + err.message, 'error');
+                setTimeout(() => {
+                    window.location.href = CONFIG.BACKEND_URL + '/?error=oauth_failed';
+                }, 3000);
+            });
+        } else {
+            updateStatus('🔄 Redirecting to Google...');
+            
+            const state = Math.random().toString(36).substring(7);
+            sessionStorage.setItem('oauth_state', state);
+            
+            const params = new URLSearchParams({
+                client_id: CONFIG.CLIENT_ID,
+                redirect_uri: CONFIG.REDIRECT_URI,
+                response_type: 'code',
+                scope: CONFIG.SCOPES,
+                access_type: 'offline',
+                prompt: 'consent',
+                state: state
+            });
+            
+            setTimeout(() => {
+                window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+            }, 500);
+        }
+    </script>
+</body>
+</html>
+

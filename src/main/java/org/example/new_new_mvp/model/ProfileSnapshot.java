@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -27,7 +27,7 @@ public class ProfileSnapshot {
     // private User user;
     
     @Column(name = "snapshot_date")
-    private LocalDateTime snapshotDate;
+    private OffsetDateTime snapshotDate;
     
     @Column(name = "profile_data", columnDefinition = "TEXT")
     private Object profileData;

@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
@@ -13,7 +13,7 @@ import java.util.UUID;
 public class CompanyDto {
     private String id;
     private String name;
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private long userCount;
     private long invitationCount;
     

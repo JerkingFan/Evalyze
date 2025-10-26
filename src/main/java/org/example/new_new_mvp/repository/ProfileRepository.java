@@ -23,21 +23,22 @@ public class ProfileRepository {
         return supabaseRepository.findByUserId(userId).block();
     }
 
-    public List<Profile> findByStatus(ProfileStatus status) {
-        return supabaseRepository.findByStatus(status).block();
-    }
+    // Status field doesn't exist in Supabase schema
+    // public List<Profile> findByStatus(ProfileStatus status) {
+    //     return supabaseRepository.findByStatus(status).block();
+    // }
 
     public List<Profile> findByUserCompanyId(UUID companyId) {
         return supabaseRepository.findByUserCompanyId(companyId).block();
     }
 
-    public List<Profile> findByUserCompanyIdAndStatus(UUID companyId, ProfileStatus status) {
-        return supabaseRepository.findByUserCompanyIdAndStatus(companyId, status).block();
-    }
+    // public List<Profile> findByUserCompanyIdAndStatus(UUID companyId, ProfileStatus status) {
+    //     return supabaseRepository.findByUserCompanyIdAndStatus(companyId, status).block();
+    // }
 
-    public long countByStatus(ProfileStatus status) {
-        return supabaseRepository.countByStatus(status).block();
-    }
+    // public long countByStatus(ProfileStatus status) {
+    //     return supabaseRepository.countByStatus(status).block();
+    // }
 
     public Profile save(Profile profile) {
         return supabaseRepository.save(profile).block();

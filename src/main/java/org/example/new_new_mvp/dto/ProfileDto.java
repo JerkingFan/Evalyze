@@ -1,11 +1,12 @@
 package org.example.new_new_mvp.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.example.new_new_mvp.model.ProfileStatus;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Data
@@ -15,7 +16,7 @@ public class ProfileDto {
     private UUID userId;
     private String userEmail;
     private String userFullName;
-    private String profileData;
+    private JsonNode profileData;
     private ProfileStatus status;
-    private LocalDateTime lastUpdated;
+    private OffsetDateTime lastUpdated;
 }

@@ -16,5 +16,7 @@ public class LoginRequest {
     @Email(message = "Email should be valid")
     private String email;
     
+    private String password;
+    
     private String googleOauthToken;
 }

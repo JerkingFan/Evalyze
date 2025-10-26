@@ -388,16 +388,33 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="loginForm">
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="loginEmail" required style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Пароль</label>
-                            <input type="password" class="form-control" id="loginPassword" required style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;">
-                        </div>
-                        <button type="submit" class="btn btn-primary-evalyze w-100 mb-3">Войти</button>
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="loginTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="email-tab" data-bs-toggle="tab" data-bs-target="#email-login" type="button" role="tab">
+                                Компания
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="code-tab" data-bs-toggle="tab" data-bs-target="#code-login" type="button" role="tab">
+                                Сотрудник
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="loginTabContent">
+                        <!-- Email/Password Login -->
+                        <div class="tab-pane fade show active" id="email-login" role="tabpanel">
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="loginEmail" required style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Пароль</label>
+                                    <input type="password" class="form-control" id="loginPassword" required style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                                </div>
+                                <button type="submit" class="btn btn-primary-evalyze w-100 mb-3">Войти</button>
                         
                         <div class="text-center mb-2" style="color: rgba(255,255,255,0.5);">
                             <small>или</small>
@@ -414,7 +431,23 @@
                             </svg>
                             Войти через Google
                         </button>
-                    </form>
+                            </form>
+                        </div>
+                        
+                        <!-- Activation Code Login -->
+                        <div class="tab-pane fade" id="code-login" role="tabpanel">
+                            <form id="activationCodeForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Код активации</label>
+                                    <input type="text" class="form-control" id="activationCode" required 
+                                           placeholder="Введите код активации от вашей компании"
+                                           style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                                    <small class="text-muted">Получите код активации у вашего HR-менеджера</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary-evalyze w-100">Войти по коду</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

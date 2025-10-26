@@ -61,7 +61,10 @@ public class SecurityConfig {
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/profiles/search").permitAll()
+                .requestMatchers("/api/profiles/create").permitAll() // Temporarily allow profile creation
                 .requestMatchers("/api/profiles/generate-ai/**").permitAll()
+                .requestMatchers("/api/profiles/assign-role/**").permitAll() // Allow assigning job role from UI
+                .requestMatchers("/api/job-roles/**").permitAll() // Allow job roles access
                 .requestMatchers("/").permitAll()
                 .requestMatchers("/company").permitAll()
                 .requestMatchers("/profile").permitAll()

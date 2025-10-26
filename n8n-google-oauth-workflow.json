@@ -1,0 +1,105 @@
+{
+  "name": "Google OAuth Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "07a96af0-9f1f-44e7-bad3-86a2c4e0cb28",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://accounts.google.com/o/oauth2/v2/auth",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "340752343067-79ipapn7o97qd8ibqvgpjg4687fm7jo7.apps.googleusercontent.com"
+            },
+            {
+              "name": "redirect_uri",
+              "value": "http://5.83.140.54:8089/api/auth/google/callback"
+            },
+            {
+              "name": "response_type",
+              "value": "code"
+            },
+            {
+              "name": "scope",
+              "value": "openid profile email"
+            },
+            {
+              "name": "access_type",
+              "value": "offline"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "redirect-to-google",
+      "name": "Redirect to Google",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "redirect",
+        "redirectURL": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Формируем URL для редиректа на Google OAuth\nconst clientId = '340752343067-79ipapn7o97qd8ibqvgpjg4687fm7jo7.apps.googleusercontent.com';\nconst redirectUri = 'http://5.83.140.54:8089/api/auth/google/callback';\nconst scope = 'openid profile email';\n\nconst googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;\n\nreturn {\n  json: {\n    url: googleAuthUrl\n  }\n};"
+      },
+      "id": "code-node",
+      "name": "Build Google OAuth URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Google OAuth URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Google OAuth URL": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}
+
